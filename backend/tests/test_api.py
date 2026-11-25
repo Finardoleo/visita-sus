@@ -1,10 +1,12 @@
 import csv
 import io
-from datetime import time
+from datetime import datetime, time, timedelta
 
 import gpxpy
 import pytest
+from django.utils import timezone
 
+from core import services
 from core.importer import importar_instancia
 from core.models import Agente, ItemRoteiro, NaoAtendida, Plano
 from tests.fixtures.mini_instance import HOUSEHOLDS, write_mini_instance
@@ -148,6 +150,81 @@ def test_instancia_sem_arquivos(client, microarea):
     r = planejar(client, microarea.agente)
     assert r.status_code == 409 and "indisponíveis" in r.json()["detail"]
     assert client.get(f"/api/microareas/{microarea.pk}/malha/").status_code == 409
+
+
+def test_replanejar_urgencia_preserva_a_primeira_parada(client, microarea, monkeypatch):
+    hoje = timezone.localdate()
+    plano_response = planejar(client, microarea.agente, data=hoje.isoformat()).json()
+    plano_obj = Plano.objects.get(pk=plano_response["id"])
+    em_andamento = plano_obj.itens.select_related("domicilio").first()
+    assert em_andamento is not None
+    agora = timezone.make_aware(datetime.combine(plano_obj.data, plano_obj.hora_inicio))
+    agora += timedelta(minutes=em_andamento.inicio_min + 1)
+    localtime_real = timezone.localtime
+    instancia_real = services._instancia_replanejamento
+    origens = []
+
+    def horario_fixo(value=None, timezone=None):
+        if value is None:
+            return agora
+        return localtime_real(value, timezone)
+
+    def capturar_origem(*args, **kwargs):
+        origens.append(args[1])
+        return instancia_real(*args, **kwargs)
+
+    monkeypatch.setattr(timezone, "localtime", horario_fixo)
+    monkeypatch.setattr(services, "_instancia_replanejamento", capturar_origem)
+    dados = {
+        "acs_lat": -30.043, "acs_lon": -51.156,
+        "lat": -30.042, "lon": -51.155,
+        "condicao": "urgencia_teste", "peso": 5, "intervalo_max_dias": 1,
+        "duracao_min": 15, "ultima_visita": "2000-01-01", "grave": True,
+    }
+    resposta = client.post(f"/api/planos/{plano_response['id']}/replanejar-urgencia/", dados,
+                           content_type="application/json")
+    assert resposta.status_code == 201, resposta.json()
+    novo = resposta.json()
+    assert origens and origens[0] == em_andamento.domicilio.node
+    assert novo["itens"][0]["condicao"] == "urgencia_teste"
+    assert novo["itens"][0]["motivo"] == "urgencia"
+    assert novo["itens"][0]["chegada"] >= services.relogio(plano_obj, em_andamento.fim_min)
+    assert novo["params"]["replanejamento"]["urgencia_atendida"]
+    assert novo["metricas"]["H"] <= 420
+    domicilio = microarea.domicilios.get(condicao="urgencia_teste")
+    assert domicilio.manual and domicilio.urgente
+    assert domicilio.urgencia_data == hoje
+    assert services.urgente_na_data(domicilio, hoje)
+    assert not services.urgente_na_data(domicilio, hoje + timedelta(days=1))
+    assert domicilio.node != microarea.ubs_node
+
+
+def test_replanejar_urgencia_que_nao_cabe_fica_nao_atendida(client, microarea, monkeypatch):
+    hoje = timezone.localdate()
+    plano = planejar(client, microarea.agente, data=hoje.isoformat()).json()
+    agora = timezone.make_aware(datetime.combine(hoje, time(14, 59)))
+    localtime_real = timezone.localtime
+
+    def horario_fixo(value=None, timezone=None):
+        if value is None:
+            return agora
+        return localtime_real(value, timezone)
+
+    monkeypatch.setattr(timezone, "localtime", horario_fixo)
+    dados = {
+        "acs_lat": -30.043, "acs_lon": -51.156,
+        "lat": -30.040, "lon": -51.153,
+        "condicao": "urgencia_teste", "peso": 5, "intervalo_max_dias": 1,
+        "duracao_min": 15, "ultima_visita": "2000-01-01", "grave": False,
+    }
+    resposta = client.post(f"/api/planos/{plano['id']}/replanejar-urgencia/", dados,
+                           content_type="application/json")
+    assert resposta.status_code == 201, resposta.json()
+    novo = resposta.json()
+    assert not novo["params"]["replanejamento"]["urgencia_atendida"]
+    nao_atendida = next(n for n in novo["nao_atendidas"] if n["condicao"] == "urgencia_teste")
+    assert nao_atendida["motivo"] == "urgencia_excedente"
+    assert novo["metricas"]["H"] <= 420
 
 
 def test_apagar_plano(client, microarea):

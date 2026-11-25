@@ -611,7 +611,7 @@ O gerador (`generator.py`, feito pelo Eduardo) é o ponto de partida e é ajusta
 
 ### P18+: Pós-MVP (só se sobrar tempo, um item por pedido)
 
-- **P18 Urgência surgida no dia:** `engine/dynamic.py` insere a urgência após a visita em andamento e retira as não urgentes de menor penalidade se `H > Tmax` (motivo `retirada_por_urgencia`). Endpoint `POST /api/planos/{id}/urgencia/` e botão na tela do plano.
+- **P18 Urgência surgida no dia (implementado):** `POST /api/planos/{id}/replanejar-urgencia/` recebe as coordenadas atuais do ACS, as coordenadas e os dados clínicos do novo domicílio. O servidor usa o horário atual, conclui primeiro uma visita que já esteja em andamento e roda a ALNS para o trecho restante, com a nova urgência fixa na primeira posição. A rota não ultrapassa 6 horas sem hora extra nem 7 horas com hora extra; uma urgência que não caiba é persistida como não atendida. O endereço é mantido como domicílio manual, mas a urgência é válida apenas na data do evento; reimportações preservam esse domicílio. O botão está na tela do plano; o resultado abre um novo plano, sem substituir o anterior.
 - **P19 Vários dias seguidos:** "confirmar execução" de um plano atualiza `ultima_visita` dos visitados. A tela permite avançar o dia.
 - **P20 Tarefas assíncronas:** fila (Celery/Redis ou `django-q2`) para gerar instâncias pela interface.
 - **P21 Autenticação** e perfis (gestor × ACS).

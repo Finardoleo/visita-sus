@@ -80,6 +80,7 @@ def itinerary(inst: Instance, sol: Solution, start: datetime, info: dict[int, di
 def route_line(G, inst: Instance, sol: Solution) -> LineString | None:
     """Trajeto completo pela malha a pé (lon, lat); None se a rota não sai do lugar."""
     nodes = [inst.visits[i].node for i in sol.route]
+    nodes[-1] = inst.return_node if inst.return_node is not None else nodes[0]
     coords = []
     for u, v in zip(nodes, nodes[1:]):
         if u == v:

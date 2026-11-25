@@ -186,6 +186,19 @@ export interface Plano {
   criado_em: string;
 }
 
+export interface DadosUrgencia {
+  acs_lat: number;
+  acs_lon: number;
+  lat: number;
+  lon: number;
+  condicao: string;
+  peso: number;
+  intervalo_max_dias: number;
+  duracao_min: number;
+  ultima_visita: string;
+  grave: boolean;
+}
+
 export interface PlanoResumo {
   id: number;
   agente: Ref;

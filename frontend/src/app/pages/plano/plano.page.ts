@@ -9,9 +9,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
-import { Comparacao, MetodoComparado } from '../../core/models';
+import { Comparacao, DadosUrgencia, MetodoComparado } from '../../core/models';
 import { ROTULO_MOTIVO_NAO_ATENDIDA, ROTULO_MOTIVO_VISITA, ROTULO_VIOLACAO, selosDoPlano } from '../../core/plano-utils';
 import { MicroareaService } from '../../core/services/microarea.service';
 import { PlanoService } from '../../core/services/plano.service';
@@ -36,6 +36,7 @@ export class PlanoPage {
   readonly id = input.required({ transform: numberAttribute });
   private readonly planos = inject(PlanoService);
   private readonly microareas = inject(MicroareaService);
+  private readonly router = inject(Router);
   private readonly mapa = viewChild(MapComponent);
 
   protected readonly plano = rxResource({ params: () => this.id(), stream: ({ params }) => this.planos.obter(params) });
@@ -80,8 +81,43 @@ export class PlanoPage {
   protected readonly comparando = signal(false);
   protected readonly erroComparacao = signal<string | null>(null);
   protected readonly rotaComparada = signal<MetodoComparado | null>(null);
+  protected readonly replanejando = signal(false);
+  protected readonly erroReplanejamento = signal<string | null>(null);
+  protected dadosUrgencia = {
+    acs_lat: null as number | null,
+    acs_lon: null as number | null,
+    lat: null as number | null,
+    lon: null as number | null,
+    condicao: '',
+    peso: 1,
+    intervalo_max_dias: 30,
+    duracao_min: 15,
+    ultima_visita: this.hoje(),
+    grave: false,
+  };
   protected subN: number | null = null;
   protected tempoMilp = 20;
+
+  protected replanejarUrgencia(): void {
+    const { acs_lat, acs_lon, lat, lon } = this.dadosUrgencia;
+    if (acs_lat === null || acs_lon === null || lat === null || lon === null) {
+      this.erroReplanejamento.set('Informe as coordenadas atuais do ACS e do novo endereço.');
+      return;
+    }
+    const dados: DadosUrgencia = { ...this.dadosUrgencia, acs_lat, acs_lon, lat, lon };
+    this.replanejando.set(true);
+    this.erroReplanejamento.set(null);
+    this.planos.replanejarUrgencia(this.id(), dados).subscribe({
+      next: (plano) => {
+        this.replanejando.set(false);
+        void this.router.navigate(['/planos', plano.id]);
+      },
+      error: (e) => {
+        this.erroReplanejamento.set(e?.error?.detail ?? e.message);
+        this.replanejando.set(false);
+      },
+    });
+  }
 
   protected comparar(): void {
     this.comparando.set(true);
@@ -122,5 +158,10 @@ export class PlanoPage {
 
   protected violacao(tipo: string): string {
     return ROTULO_VIOLACAO[tipo] ?? tipo;
+  }
+
+  private hoje(): string {
+    const agora = new Date();
+    return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
   }
 }

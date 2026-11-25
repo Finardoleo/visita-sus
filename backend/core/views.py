@@ -4,6 +4,7 @@ from django.db import connection
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
@@ -15,7 +16,8 @@ from . import relatorio as relatorio_service
 from . import services
 from .models import Agente, Equipe, Microarea, Plano
 from .serializers import (AgenteSerializer, CompararSerializer, EquipeSerializer, MicroareaSerializer,
-                          PlanejarSerializer, PlanoCreateSerializer, PlanoResumoSerializer, PlanoSerializer)
+                          PlanejarSerializer, PlanoCreateSerializer, PlanoResumoSerializer, PlanoSerializer,
+                          ReplanejarUrgenciaSerializer)
 
 
 def _instancia_ausente(microarea, erro):
@@ -98,7 +100,8 @@ def microarea_domicilios(request, pk):
                 "id": d.pk, "codigo": d.codigo, "condicao": d.condicao, "w": d.peso, "P": d.intervalo_max_dias,
                 "duracao_min": d.duracao_min, "ultima_visita": d.ultima_visita.isoformat(), "dias_sem_visita": dias,
                 "penalidade": services.penalidade(d, data), "atrasado": dias + 1 > d.intervalo_max_dias,
-                "atraso_dias": max(0, dias - d.intervalo_max_dias), "urgente": d.urgente, "grave": d.grave,
+                "atraso_dias": max(0, dias - d.intervalo_max_dias),
+                "urgente": services.urgente_na_data(d, data), "grave": d.grave,
                 "tw_inicio": d.tw_inicio, "tw_fim": d.tw_fim, "n_moradores": d.n_moradores, "node": d.node,
             },
         })
@@ -161,6 +164,22 @@ def plano_comparar(request, pk):
         return Response(services.comparar(plano, **s.validated_data))
     except OSError as e:
         return _instancia_ausente(plano.agente.microarea, e)
+
+
+@api_view(["POST"])
+def plano_replanejar_urgencia(request, pk):
+    """Registra uma nova urgência e recalcula o restante do turno usando ALNS."""
+    plano = get_object_or_404(Plano.objects.select_related("agente__microarea__equipe__ubs"), pk=pk)
+    s = ReplanejarUrgenciaSerializer(data=request.data)
+    s.is_valid(raise_exception=True)
+    try:
+        novo_plano = services.replanejar_urgencia(plano, s.validated_data)
+    except ValueError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except OSError as e:
+        return _instancia_ausente(plano.agente.microarea, e)
+    return Response(PlanoSerializer(novo_plano, context={"request": request}).data,
+                    status=status.HTTP_201_CREATED)
 
 
 def equipe_relatorio_csv(request, pk):

@@ -124,7 +124,7 @@ def _importar_microarea(files, base: date, nome: str, equipe_obj: Equipe, poligo
             setattr(agente_obj, k, v)
         agente_obj.save()
 
-    existing = {d.codigo: d for d in microarea.domicilios.all()}
+    existing = {d.codigo: d for d in microarea.domicilios.filter(manual=False)}
     fields = ["node", "lat", "lon", "edificacao", "n_moradores", "condicao", "peso", "intervalo_max_dias",
               "duracao_min", "ultima_visita", "tw_inicio", "tw_fim", "urgente", "grave"]
     to_create, to_update = [], []

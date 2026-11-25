@@ -1,5 +1,6 @@
 from dataclasses import fields
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from engine.instance import Params
@@ -121,6 +122,24 @@ class CompararSerializer(serializers.Serializer):
     seed = serializers.IntegerField(required=False, default=0)
 
 
+class ReplanejarUrgenciaSerializer(serializers.Serializer):
+    acs_lat = serializers.FloatField(min_value=-90, max_value=90)
+    acs_lon = serializers.FloatField(min_value=-180, max_value=180)
+    lat = serializers.FloatField(min_value=-90, max_value=90)
+    lon = serializers.FloatField(min_value=-180, max_value=180)
+    condicao = serializers.CharField(max_length=50)
+    peso = serializers.FloatField(min_value=0.1, max_value=10)
+    intervalo_max_dias = serializers.IntegerField(min_value=1, max_value=3650)
+    duracao_min = serializers.FloatField(min_value=0.1, max_value=360)
+    ultima_visita = serializers.DateField()
+    grave = serializers.BooleanField(default=False)
+
+    def validate_ultima_visita(self, value):
+        if value > timezone.localdate():
+            raise serializers.ValidationError("não pode estar no futuro")
+        return value
+
+
 class PlanoResumoSerializer(serializers.ModelSerializer):
     """Linha de listagem: o plano sem itens nem rota."""
     agente = serializers.SerializerMethodField()
@@ -174,7 +193,7 @@ class PlanoSerializer(serializers.ModelSerializer):
             "excesso_min": p.excesso_min, "H": p.retorno_min, "retorno": services.relogio(p, p.retorno_min),
             "jornada_min": acs.get("T"), "jornada_max_min": acs.get("Tmax"), "teto_graves": acs.get("K"),
             "visitas": len(itens), "candidatas": p.n_candidatas, "fora_das_candidatas": p.n_fora_candidatas,
-            "urgentes_atendidas": sum(i.domicilio.urgente for i in itens),
+            "urgentes_atendidas": sum(services.urgente_na_data(i.domicilio, p.data) for i in itens),
             "graves": sum(i.domicilio.grave for i in itens),
             "nao_atendidas": p.nao_atendidas.count(),
             "runtime_s": p.runtime_s, "seed": p.seed, "seeds_stats": p.seeds_stats, "gap": p.gap,
@@ -186,7 +205,8 @@ class PlanoSerializer(serializers.ModelSerializer):
             d = i.domicilio
             out.append({
                 "ordem": i.ordem, "domicilio": d.pk, "codigo": d.codigo, "lat": d.lat, "lon": d.lon,
-                "condicao": d.condicao, "motivo": i.motivo, "w": d.peso, "urgente": d.urgente, "grave": d.grave,
+                "condicao": d.condicao, "motivo": i.motivo, "w": d.peso,
+                "urgente": services.urgente_na_data(d, p.data), "grave": d.grave,
                 "dias_sem_visita": services.dias_sem_visita(d, p.data), "P": d.intervalo_max_dias,
                 "chegada": services.relogio(p, i.chegada_min), "inicio": services.relogio(p, i.inicio_min),
                 "fim": services.relogio(p, i.fim_min), "espera_min": i.inicio_min - i.chegada_min,
@@ -200,7 +220,8 @@ class PlanoSerializer(serializers.ModelSerializer):
             d = n.domicilio
             out.append({
                 "domicilio": d.pk, "codigo": d.codigo, "lat": d.lat, "lon": d.lon, "condicao": d.condicao,
-                "motivo": n.motivo, "w": d.peso, "urgente": d.urgente, "grave": d.grave, "penalidade": n.penalidade,
+                "motivo": n.motivo, "w": d.peso, "urgente": services.urgente_na_data(d, p.data),
+                "grave": d.grave, "penalidade": n.penalidade,
                 "dias_sem_visita": n.dias_sem_visita, "atraso_dias": n.atraso_dias, "P": d.intervalo_max_dias,
             })
         return out

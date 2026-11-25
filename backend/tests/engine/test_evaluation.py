@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from engine.evaluation import build_solution, evaluate, is_feasible, schedule
+from engine.evaluation import build_solution, evaluate, is_feasible, schedule, timing
 from engine.instance import Instance, Params, Visit
 
 BACKEND = Path(__file__).resolve().parents[2]
@@ -90,6 +90,15 @@ def test_rota_vazia(inst):
     assert (ev.H, ev.walk, ev.stops) == (0, 0, [])
     assert ev.residual_penalty == pytest.approx(8.9)
     assert kinds(ev) == [("urgente_ausente", 2)]
+
+
+def test_tempo_decorrido_e_consistente_no_cronograma_e_timing(inst):
+    inst.elapsed_min = 30
+    stops, H, _ = schedule(inst, [0, 2, 1, 0])
+    H_rapido, _, janela_ok = timing(inst, [0, 2, 1, 0])
+    assert stops[0].arrival == 40
+    assert H == pytest.approx(79)
+    assert H_rapido == pytest.approx(H) and janela_ok
 
 
 @pytest.mark.parametrize("route", [[1, 0], [0, 1], [0], [0, 1, 1, 0], [0, 5, 0], [0, 1, 0, 2, 0]])

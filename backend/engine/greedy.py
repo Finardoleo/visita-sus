@@ -24,7 +24,10 @@ PAIR_EXCHANGE_MAX_INSTANCE_SIZE = 15
 
 def urgent_route(inst: Instance) -> list[int]:
     """UBS → urgentes por vizinho mais próximo → UBS."""
-    route, here, todo = [0], 0, sorted(inst.urgent)
+    route = [0, *inst.fixed_prefix]
+    here = route[-1]
+    fixed = set(inst.fixed_prefix)
+    todo = sorted(i for i in inst.urgent if i not in fixed)
     while todo:
         nxt = min(todo, key=lambda i: (inst.t[here, i], i))
         todo.remove(nxt)
@@ -57,10 +60,11 @@ def best_insertion(inst: Instance, params: Params, route: list[int], c: int,
 
 def improve_route(inst: Instance, params: Params, route: list[int]) -> list[int]:
     """Aplica reversão local e troca de até duas visitas regulares, sem piorar o objetivo."""
-    first_pos = len(inst.urgent) + 1
+    prefix = set(inst.fixed_prefix)
+    first_pos = len(inst.fixed_prefix) + len([i for i in inst.urgent if i not in prefix]) + 1
     while True:
         best_route, best_objective = route, evaluate(inst, params, route).objective
-        pending = [i for i in inst.candidates if not inst.visits[i].urgent and i not in route]
+        pending = [i for i in inst.candidates if not inst.visits[i].urgent and i not in route and i not in prefix]
 
         for i in range(first_pos, len(route) - 2):
             for j in range(i + 1, len(route) - 1):

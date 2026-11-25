@@ -80,7 +80,7 @@ def linha(microarea, data: date, limiares: dict) -> dict:
         "agente": {"id": agente.pk, "nome": agente.nome} if agente else None,
         "domicilios": len(doms),
         "atrasados": sum(atrasado.values()),
-        "prioritarios": sum(1 for d in doms if d.urgente or atrasado[d.pk]),
+        "prioritarios": sum(1 for d in doms if services.urgente_na_data(d, data) or atrasado[d.pk]),
     }
     plano = (Plano.objects.filter(agente=agente, data=data).order_by("-criado_em").first() if agente else None)
     if plano is None:
@@ -91,7 +91,7 @@ def linha(microarea, data: date, limiares: dict) -> dict:
     por_motivo = Counter(plano.nao_atendidas.values_list("motivo", flat=True))
     fora = [d for d in doms if d.pk not in visitados]
     atrasados_fora = sum(1 for d in fora if atrasado[d.pk])
-    urgentes_fora = sum(1 for d in fora if d.urgente)
+    urgentes_fora = sum(1 for d in fora if services.urgente_na_data(d, data))
     atrasados_visitados = base["atrasados"] - atrasados_fora
     dias_atraso_fora = sum(max(0, services.dias_sem_visita(d, data) - d.intervalo_max_dias)
                            for d in fora if atrasado[d.pk])
@@ -111,7 +111,7 @@ def linha(microarea, data: date, limiares: dict) -> dict:
         "em_dia_sem_visita": len(fora) - atrasados_fora,
         "cobertura_atrasados": atrasados_visitados / base["atrasados"] if base["atrasados"] else None,
         "urgentes_fora": urgentes_fora,
-        "prioritarios_fora": sum(1 for d in fora if d.urgente or atrasado[d.pk]),
+        "prioritarios_fora": sum(1 for d in fora if services.urgente_na_data(d, data) or atrasado[d.pk]),
         "dias_atraso_fora": dias_atraso_fora,
         "penalidade_residual": plano.penalidade_residual,
         "penalidade_residual_min": beta * plano.penalidade_residual,

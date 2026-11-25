@@ -76,6 +76,25 @@ app-linha-do-tempo { margin-bottom: var(--esp-5); }
 
 .exportar { display: flex; gap: var(--esp-2); margin: 0 0 var(--esp-4); }
 
+.urgencia-form {
+  display: grid;
+  gap: var(--esp-3);
+  margin: 0 0 var(--esp-5);
+  padding: var(--esp-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  h3, p { margin: 0; }
+  button { justify-self: start; }
+}
+
+.urgencia-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--esp-2);
+}
+
+.grave { display: flex; align-items: center; gap: var(--esp-2); font-size: 13px; }
+
 dl.tecnico {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -161,4 +180,5 @@ table.lista {
   aside { min-width: 0; overflow: visible; padding: var(--esp-4); border-right: none;
     border-bottom: 1px solid var(--mat-sys-outline-variant); }
   .numeros { grid-template-columns: repeat(2, 1fr); }
+  .urgencia-campos { grid-template-columns: minmax(0, 1fr); }
 }

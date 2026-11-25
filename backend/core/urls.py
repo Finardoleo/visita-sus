@@ -16,6 +16,8 @@ urlpatterns = [
     path("planos/", views.PlanoList.as_view(), name="plano-list"),
     path("planos/<int:pk>/", views.PlanoDetail.as_view(), name="plano-detail"),
     path("planos/<int:pk>/comparar/", views.plano_comparar, name="plano-comparar"),
+    path("planos/<int:pk>/replanejar-urgencia/", views.plano_replanejar_urgencia,
+         name="plano-replanejar-urgencia"),
     path("planos/<int:pk>/itinerario.csv", views.plano_csv, name="plano-csv"),
     path("planos/<int:pk>/itinerario.gpx", views.plano_gpx, name="plano-gpx"),
 ]

@@ -1,9 +1,11 @@
 """
 Contrato do engine: estruturas compartilhadas por guloso, ALNS, MILP e backend.
 
-Uma Instance é o problema de 1 ACS em 1 dia: a UBS (índice 0) e as visitas candidatas já
-pré-processadas (índices 1..n-1). Visitas descartadas no pré-processamento (inviáveis, urgências
-excedentes) não entram na Instance; são reportadas à parte. Toda urgente da Instance é obrigatória.
+Uma Instance é o problema de 1 ACS em 1 dia: a origem do trecho (índice 0) e as visitas candidatas já
+pré-processadas (índices 1..n-1). Num planejamento normal, a origem é a UBS; num replanejamento, pode ser
+a posição atual do ACS e o retorno à UBS fica na coluna 0 da matriz. Visitas descartadas no pré-processamento
+(inviáveis, urgências excedentes) não entram na Instance; são reportadas à parte. Toda urgente da Instance
+é obrigatória.
 
 Tempos em minutos desde o início da jornada; distâncias já convertidas em minutos de caminhada.
 """
@@ -49,6 +51,9 @@ class Instance:
     T: float = 360.0             # jornada nominal (min)
     Tmax: float = 420.0          # jornada máxima tolerada (min)
     K: int = 3                   # teto de casos graves por dia
+    elapsed_min: float = 0.0     # minutos já decorridos do turno antes de iniciar esta rota
+    return_node: int | None = None  # nó final; por padrão, o mesmo nó da UBS/início
+    fixed_prefix: list[int] = field(default_factory=list)  # visitas que devem abrir a rota, nesta ordem
 
     def __post_init__(self):
         self.t = np.asarray(self.t, dtype=float)
@@ -59,6 +64,16 @@ class Instance:
             raise ValueError(f"matriz t {self.t.shape} não corresponde a {n} visitas")
         if self.T > self.Tmax:
             raise ValueError("jornada nominal T maior que Tmax")
+        if self.elapsed_min < 0:
+            raise ValueError("elapsed_min não pode ser negativo")
+        if len(set(self.fixed_prefix)) != len(self.fixed_prefix) or any(
+            not 0 < i < n for i in self.fixed_prefix
+        ):
+            raise ValueError("fixed_prefix deve conter índices únicos de visitas candidatas")
+        if any(not self.visits[i].urgent for i in self.fixed_prefix[1:]):
+            raise ValueError("apenas a primeira visita fixa pode anteceder o bloco de urgências")
+        if self.fixed_prefix and not self.visits[self.fixed_prefix[0]].urgent:
+            raise ValueError("a primeira visita fixa deve ser urgente")
 
     @property
     def n(self) -> int:

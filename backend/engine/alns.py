@@ -51,6 +51,7 @@ class RouteState:
         t, vis = inst.t, inst.visits
         n = len(route)
         A, S, W, D = [0.0] * n, [0.0] * n, [0.0] * n, [0.0] * n
+        D[0] = inst.elapsed_min
         for k in range(1, n):
             i = route[k]
             A[k] = D[k - 1] + t[route[k - 1], i]
@@ -102,7 +103,7 @@ class ALNS:
         urgent = greedy.urgent_route(inst)
         self.first = len(urgent) - 1          # primeira posição do bloco não urgente
         self.limit = greedy.graves_limit(inst, urgent)
-        self.regular = [c for c in inst.candidates if not vis[c].urgent]
+        self.regular = [c for c in inst.candidates if not vis[c].urgent and c not in inst.fixed_prefix]
         self.destroy_ops = [self.destroy_random, self.destroy_worst, self.destroy_shaw,
                             self.destroy_segment, self.destroy_expensive]
         self.repair_ops = [self.repair_greedy, self.repair_regret, self.repair_by_penalty,
@@ -282,7 +283,7 @@ class ALNS:
         """2-opt de primeira melhora, invertendo trechos dentro de um mesmo bloco (urgências ou demais)."""
         t = self.inst.t
         best = self.objective(route)
-        blocks = [(1, self.first - 1), (self.first, len(route) - 2)]
+        blocks = [(len(self.inst.fixed_prefix) + 1, self.first - 1), (self.first, len(route) - 2)]
         improved = True
         while improved:
             improved = False
@@ -314,7 +315,8 @@ class ALNS:
         improved = True
         while improved:
             improved = False
-            for lo, hi in ((1, self.first - 1), (self.first, len(route) - 2)):
+            for lo, hi in ((len(self.inst.fixed_prefix) + 1, self.first - 1),
+                           (self.first, len(route) - 2)):
                 for k in (1, 2, 3):
                     for i in range(lo, hi - k + 2):
                         j = i + k - 1  # trecho route[i..j]
@@ -355,7 +357,10 @@ class ALNS:
         """Urgências no início (na ordem em que aparecem), as demais depois."""
         vis = self.inst.visits
         inner = route[1:-1]
-        return [0] + [i for i in inner if vis[i].urgent] + [i for i in inner if not vis[i].urgent] + [0]
+        prefix = self.inst.fixed_prefix
+        rest = [i for i in inner if i not in prefix]
+        return [0, *prefix, *(i for i in rest if vis[i].urgent),
+                *(i for i in rest if not vis[i].urgent), 0]
 
     # ---------- laço principal ----------
     def run(self, initial: list[int]) -> tuple[list[int], float, int]:

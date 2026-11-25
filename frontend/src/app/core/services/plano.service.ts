@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { Comparacao, Metodo, Params, Plano, PlanoResumo } from '../models';
+import { Comparacao, DadosUrgencia, Metodo, Params, Plano, PlanoResumo } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class PlanoService {
@@ -32,6 +32,10 @@ export class PlanoService {
 
   comparar(id: number, opcoes: { tempo_milp?: number; n?: number | null; seed?: number } = {}): Observable<Comparacao> {
     return this.http.post<Comparacao>(`${this.url}/${id}/comparar/`, opcoes);
+  }
+
+  replanejarUrgencia(id: number, dados: DadosUrgencia): Observable<Plano> {
+    return this.http.post<Plano>(`${this.url}/${id}/replanejar-urgencia/`, dados);
   }
 
   csvUrl(id: number): string {

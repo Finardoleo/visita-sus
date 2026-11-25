@@ -46,13 +46,13 @@ def validate_route(inst: Instance, route: list[int]) -> None:
 
 def schedule(inst: Instance, route: list[int]) -> tuple[list[Stop], float, float]:
     """
-    Cronograma da rota a partir do instante 0 na UBS: em cada parada, chegada = fim anterior + caminhada,
-    início = max(chegada, a) (espera a janela abrir), fim = início + s. Devolve (paradas, H, caminhada),
-    em que H é o retorno à UBS (inclui esperas) e as paradas não incluem a UBS.
+    Cronograma da rota a partir do tempo decorrido e da origem da instância: em cada parada, chegada = fim
+    anterior + caminhada, início = max(chegada, a) (espera a janela abrir), fim = início + s. Devolve
+    (paradas, H, caminhada), em que H é o retorno à UBS (inclui esperas) e as paradas não incluem a UBS.
     """
     validate_route(inst, route)
     t, visits = inst.t, inst.visits
-    stops, clock, walk = [], 0.0, 0.0
+    stops, clock, walk = [], inst.elapsed_min, 0.0
     for prev, i in zip(route[:-2], route[1:-1]):
         leg = float(t[prev, i])
         arrival = clock + leg
@@ -67,10 +67,11 @@ def schedule(inst: Instance, route: list[int]) -> tuple[list[Stop], float, float
 def timing(inst: Instance, route: list[int]) -> tuple[float, float, bool]:
     """
     Versão rápida do cronograma para as heurísticas, sem validar a rota nem montar paradas:
-    (H, caminhada, janelas respeitadas). Para na primeira janela violada (H = inf).
+    (H, caminhada, janelas respeitadas), incluindo o tempo já decorrido do turno. Para na primeira janela
+    violada (H = inf).
     """
     t, visits = inst.t, inst.visits
-    clock = walk = 0.0
+    clock, walk = inst.elapsed_min, 0.0
     prev = route[0]
     for i in route[1:-1]:
         leg = t[prev, i]
@@ -98,6 +99,9 @@ def violations(inst: Instance, route: list[int], stops: list[Stop], H: float) ->
         found.append(Violation("jornada", None, H - inst.Tmax))
 
     inner = route[1:-1]
+    if inner[:len(inst.fixed_prefix)] != inst.fixed_prefix:
+        found.append(Violation("prefixo_fixo"))
+    restante = inner[len(inst.fixed_prefix):]
     graves = [i for i in inner if visits[i].grave]
     limit = max(inst.K, sum(visits[i].urgent for i in graves))
     if len(graves) > limit:
@@ -106,8 +110,8 @@ def violations(inst: Instance, route: list[int], stops: list[Stop], H: float) ->
     in_route = set(inner)
     found += [Violation("urgente_ausente", i) for i in inst.urgent if i not in in_route]
 
-    first_regular = next((pos for pos, i in enumerate(inner) if not visits[i].urgent), len(inner))
-    found += [Violation("urgencia_fora_de_ordem", i) for i in inner[first_regular:] if visits[i].urgent]
+    first_regular = next((pos for pos, i in enumerate(restante) if not visits[i].urgent), len(restante))
+    found += [Violation("urgencia_fora_de_ordem", i) for i in restante[first_regular:] if visits[i].urgent]
     return found
 
 

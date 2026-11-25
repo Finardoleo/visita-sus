@@ -32,6 +32,15 @@ def test_insercao_em_o1_bate_com_o_cronograma(seed):
                 assert got is None, (c, p)
 
 
+def test_estado_da_rota_considera_tempo_decorrido(inst):
+    inst.elapsed_min = 30
+    route = [0, 2, 1, 0]
+    state = RouteState(inst, route)
+    H, walk, ok = timing(inst, route)
+    assert ok and state.H == pytest.approx(H) == 79
+    assert state.walk == pytest.approx(walk)
+
+
 @pytest.mark.parametrize("seed", range(10))
 def test_viavel_e_nunca_pior_que_o_guloso(seed):
     inst = random_instance(seed)

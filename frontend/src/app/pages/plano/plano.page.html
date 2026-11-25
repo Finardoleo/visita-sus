@@ -48,6 +48,46 @@
         <a mat-stroked-button [href]="gpx()" download><mat-icon>download</mat-icon> GPX</a>
       </div>
 
+      <form class="urgencia-form" (ngSubmit)="replanejarUrgencia()">
+        <h3>Nova urgência durante o turno</h3>
+        <p class="detalhes">Informe a posição atual do ACS e o endereço da urgência. O servidor usa o horário
+          atual; a nova visita abre a rota e o restante é reorganizado pela ALNS dentro do limite de 6 horas,
+          ou até 7 horas se houver hora extra.</p>
+        <div class="urgencia-campos">
+          <mat-form-field subscriptSizing="dynamic"><mat-label>ACS: latitude atual</mat-label>
+            <input matInput type="number" step="any" min="-90" max="90" required
+              [(ngModel)]="dadosUrgencia.acs_lat" name="acs_lat" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>ACS: longitude atual</mat-label>
+            <input matInput type="number" step="any" min="-180" max="180" required
+              [(ngModel)]="dadosUrgencia.acs_lon" name="acs_lon" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Urgência: latitude</mat-label>
+            <input matInput type="number" step="any" min="-90" max="90" required
+              [(ngModel)]="dadosUrgencia.lat" name="urgencia_lat" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Urgência: longitude</mat-label>
+            <input matInput type="number" step="any" min="-180" max="180" required
+              [(ngModel)]="dadosUrgencia.lon" name="urgencia_lon" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Condição</mat-label>
+            <input matInput required maxlength="50" [(ngModel)]="dadosUrgencia.condicao" name="condicao" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Peso clínico</mat-label>
+            <input matInput type="number" min="0.1" max="10" step="0.1" required
+              [(ngModel)]="dadosUrgencia.peso" name="peso" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Intervalo máximo (dias)</mat-label>
+            <input matInput type="number" min="1" max="3650" required
+              [(ngModel)]="dadosUrgencia.intervalo_max_dias" name="intervalo" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Duração da visita (min)</mat-label>
+            <input matInput type="number" min="0.1" max="360" step="0.1" required
+              [(ngModel)]="dadosUrgencia.duracao_min" name="duracao" /></mat-form-field>
+          <mat-form-field subscriptSizing="dynamic"><mat-label>Última visita</mat-label>
+            <input matInput type="date" required [(ngModel)]="dadosUrgencia.ultima_visita" name="ultima_visita" /></mat-form-field>
+        </div>
+        <label class="grave"><input type="checkbox" [(ngModel)]="dadosUrgencia.grave" name="grave" /> Caso grave</label>
+        <button mat-flat-button type="submit" [disabled]="replanejando()">
+          @if (replanejando()) { Replanejando… } @else { Replanejar o restante do turno }
+        </button>
+        @if (replanejando()) { <mat-progress-bar mode="indeterminate" /> }
+        @if (erroReplanejamento(); as erro) { <p class="erro" role="alert">{{ erro }}</p> }
+      </form>
+
       <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms">
         <mat-tab [label]="'Itinerário (' + p.itens.length + ')'">
           <p class="legenda-lista">

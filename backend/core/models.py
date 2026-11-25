@@ -107,7 +107,9 @@ class Domicilio(models.Model):
     tw_inicio = models.FloatField(default=0, help_text="início da janela (min desde o início da jornada)")
     tw_fim = models.FloatField(default=420, help_text="fim da janela (min desde o início da jornada)")
     urgente = models.BooleanField(default=False)
+    urgencia_data = models.DateField(null=True, blank=True, help_text="data da urgência pontual; nulo para recorrente")
     grave = models.BooleanField(default=False)
+    manual = models.BooleanField(default=False, help_text="cadastrado fora da importação da instância")
 
     class Meta:
         verbose_name = "domicílio"
