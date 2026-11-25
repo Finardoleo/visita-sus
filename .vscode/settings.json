@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /home/guilliman/visita-sus/backend && \\.venv/bin/python -m pytest tests/engine/test_alns\\.py tests/engine/test_greedy\\.py tests/engine/test_milp\\.py -q$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

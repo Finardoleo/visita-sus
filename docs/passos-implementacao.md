@@ -565,7 +565,7 @@ O gerador (`generator.py`, feito pelo Eduardo) é o ponto de partida e é ajusta
   | 15 candidatas (3) | ótimo provado em 3/3, ≤ 2 s | 5,88% | 0% | 3/3 |
 
 - **Instância inteira (46 candidatas):** em 60 s o MILP não melhora a ALNS (2984,5), e o *gap* provado fica em 59% (limitante 1217,5). O limitante big-M é fraco. Confirma o uso do MILP só como referência em subinstâncias.
-- **Achado para o P16:** na subinstância 0 de 10 candidatas, a ALNS ficou 1,67% acima do ótimo, com as mesmas 9 visitas e só a ordem pior. Um operador de realocação (*or-opt*) ou 2-opt entre os blocos pode fechar esse *gap*.
+- **Achado para o P16:** na subinstância 0 de 10 candidatas, a ALNS ficou 1,67% acima do ótimo, com as mesmas 9 visitas e só a ordem pior. O estado atual já executa 2-opt e or-opt dentro dos blocos de urgentes e não urgentes; não há evidência de que essa busca local adicional fosse a causa desta execução específica.
 
 ---
 

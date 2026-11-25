@@ -32,9 +32,10 @@ Todos os cenários usam a mesma UBS (Bom Jesus, Porto Alegre), 1 ACS por microá
 
 ## Limitações e próximos passos
 
-- **Alta urgência:** é o pior caso da ALNS contra o MILP, com *gap* médio de 2,96% e pior caso de 14,78%. Com 18 urgências obrigatórias e precedentes, sobra pouca liberdade e a ALNS às vezes fixa uma ordem ruim. Um operador de realocação (*or-opt*/2-opt) dentro do bloco de urgências deve reduzir esse *gap* (achado do P15).
+- **Alta urgência:** é o pior caso da ALNS contra o MILP, com *gap* médio de 2,96% e pior caso de 14,78%. Com 18 urgências obrigatórias e precedentes, sobra pouca liberdade. A implementação já aplica 2-opt e or-opt dentro do bloco de urgências; por isso, o achado anterior de que faltava esse operador não se aplica ao estado atual do código.
 - **Instâncias completas:** em 60 s, o MILP não prova a otimalidade (limitante *big-M* fraco). Por isso, ele só serve de referência em subinstâncias.
 - **Dados sintéticos:** os parâmetros clínicos (`w`, `P`, `s`, probabilidades) são ilustrativos. Os números de demanda não atendida dizem mais sobre o gerador do que sobre uma equipe real.
+- **Divergência do guloso em instâncias pequenas:** o caso registrado em `test_instancia_pequena_preserva_a_divergencia_miope` explica qualitativamente o comportamento: o guloso mantém conjunto e ordem escolhidos por ganho marginal local e não compara uma substituição global. O resultado pode ficar abaixo do ótimo sem violar nenhuma restrição.
 
 ## Como reproduzir
 

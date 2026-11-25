@@ -87,6 +87,14 @@ def test_nenhuma_candidata_que_falta_cabe_com_ganho():
                 assert evaluate(inst, PARAMS, r).objective >= sol.objective - 1e-9
 
 
+def test_instancia_pequena_preserva_a_divergencia_miope():
+    """Caso registrado para explicar o gap do guloso: a escolha ganância não troca o conjunto escolhido por um melhor conjunto."""
+    inst = random_instance(3, n=7, Tmax=110, K=1)
+    sol = greedy.solve(inst, PARAMS)
+    assert sol.route == [0, 4, 3, 7, 2, 0]
+    assert sol.objective == pytest.approx(448.3850166069879)
+
+
 def test_timing_bate_com_evaluate():
     inst = random_instance(1)
     route = greedy.solve(inst, PARAMS).route
