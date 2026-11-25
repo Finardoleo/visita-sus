@@ -35,7 +35,7 @@ Todos os cenários usam a mesma UBS (Bom Jesus, Porto Alegre), 1 ACS por microá
 - **Alta urgência:** é o pior caso da ALNS contra o MILP, com *gap* médio de 2,96% e pior caso de 14,78%. Com 18 urgências obrigatórias e precedentes, sobra pouca liberdade. A implementação já aplica 2-opt e or-opt dentro do bloco de urgências; por isso, o achado anterior de que faltava esse operador não se aplica ao estado atual do código.
 - **Instâncias completas:** em 60 s, o MILP não prova a otimalidade (limitante *big-M* fraco). Por isso, ele só serve de referência em subinstâncias.
 - **Dados sintéticos:** os parâmetros clínicos (`w`, `P`, `s`, probabilidades) são ilustrativos. Os números de demanda não atendida dizem mais sobre o gerador do que sobre uma equipe real.
-- **Divergência do guloso em instâncias pequenas:** o caso registrado em `test_instancia_pequena_preserva_a_divergencia_miope` explica qualitativamente o comportamento: o guloso mantém conjunto e ordem escolhidos por ganho marginal local e não compara uma substituição global. O resultado pode ficar abaixo do ótimo sem violar nenhuma restrição.
+- **Busca local para o guloso:** após a construção, o método agora tenta reversões de trechos e trocas de até duas visitas regulares, aceitando apenas planos viáveis com objetivo estritamente menor. No caso pequeno registrado no teste `test_troca_de_duas_visitas_fecha_gap_no_caso_pequeno`, isso reduz o objetivo de 448,385 para 442,699, igual ao ótimo calculado por força bruta. A troca de duas visitas é limitada a instâncias com até 15 candidatas para evitar o custo combinatório nas instâncias completas; esse resultado pontual não prova que o guloso fecha o gap nos demais casos.
 
 ## Como reproduzir
 

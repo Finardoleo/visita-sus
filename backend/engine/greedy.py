@@ -12,10 +12,14 @@ Construção gulosa (etapa 1 do algoritmo, §6.5 da proposta).
 As que sobram ficam com motivo `teto_graves` (grave barrada pelo teto) ou `nao_coube`.
 """
 
+from itertools import combinations
 from time import perf_counter
 
-from .evaluation import build_solution, timing
+from .evaluation import build_solution, evaluate, timing
 from .instance import Instance, Params, Solution
+
+MAX_PAIR_EXCHANGE_CANDIDATES = 8
+PAIR_EXCHANGE_MAX_INSTANCE_SIZE = 15
 
 
 def urgent_route(inst: Instance) -> list[int]:
@@ -49,6 +53,51 @@ def best_insertion(inst: Instance, params: Params, route: list[int], c: int,
         if best_key is None or key < best_key:
             best, best_key = (p, H, walk), key
     return best
+
+
+def improve_route(inst: Instance, params: Params, route: list[int]) -> list[int]:
+    """Aplica reversão local e troca de até duas visitas regulares, sem piorar o objetivo."""
+    first_pos = len(inst.urgent) + 1
+    while True:
+        best_route, best_objective = route, evaluate(inst, params, route).objective
+        pending = [i for i in inst.candidates if not inst.visits[i].urgent and i not in route]
+
+        for i in range(first_pos, len(route) - 2):
+            for j in range(i + 1, len(route) - 1):
+                candidate = route[:i] + route[i:j + 1][::-1] + route[j + 1:]
+                ev = evaluate(inst, params, candidate)
+                if ev.feasible and ev.objective < best_objective - 1e-9:
+                    best_route, best_objective = candidate, ev.objective
+
+        for pos in range(first_pos, len(route) - 1):
+            reduced = route[:pos] + route[pos + 1:]
+            for c in pending:
+                for insert_pos in range(first_pos, len(reduced)):
+                    candidate = reduced[:insert_pos] + [c] + reduced[insert_pos:]
+                    ev = evaluate(inst, params, candidate)
+                    if ev.feasible and ev.objective < best_objective - 1e-9:
+                        best_route, best_objective = candidate, ev.objective
+
+        if (inst.n - 1 <= PAIR_EXCHANGE_MAX_INSTANCE_SIZE and len(pending) >= 2
+                and len(route) - first_pos >= 3):
+            pair_candidates = sorted(pending, key=lambda i: (-inst.visits[i].penalty, i))[
+                :MAX_PAIR_EXCHANGE_CANDIDATES
+            ]
+            for i, j in combinations(range(first_pos, len(route) - 1), 2):
+                reduced = route[:i] + route[i + 1:j] + route[j + 1:]
+                for c, d in combinations(pair_candidates, 2):
+                    for first, second in ((c, d), (d, c)):
+                        for p in range(first_pos, len(reduced)):
+                            once = reduced[:p] + [first] + reduced[p:]
+                            for q in range(first_pos, len(once)):
+                                candidate = once[:q] + [second] + once[q:]
+                                ev = evaluate(inst, params, candidate)
+                                if ev.feasible and ev.objective < best_objective - 1e-9:
+                                    best_route, best_objective = candidate, ev.objective
+
+        if best_route is route:
+            return route
+        route = best_route
 
 
 def solve(inst: Instance, params: Params) -> Solution:
@@ -87,6 +136,7 @@ def solve(inst: Instance, params: Params) -> Solution:
         pending.remove(c)
         graves += inst.visits[c].grave
 
+    route = improve_route(inst, params, route)
     return build_solution(inst, params, route, "guloso", runtime_s=perf_counter() - start,
                           unvisited_reasons=unvisited_reasons(inst, route))
 

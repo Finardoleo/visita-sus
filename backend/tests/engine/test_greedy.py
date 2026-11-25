@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from engine import greedy
+from engine import greedy, milp
 from engine.evaluation import evaluate, timing
 from engine.instance import Instance, Params, Visit
 from engine.io import instance_from_files
@@ -87,12 +87,16 @@ def test_nenhuma_candidata_que_falta_cabe_com_ganho():
                 assert evaluate(inst, PARAMS, r).objective >= sol.objective - 1e-9
 
 
-def test_instancia_pequena_preserva_a_divergencia_miope():
-    """Caso registrado para explicar o gap do guloso: a escolha ganância não troca o conjunto escolhido por um melhor conjunto."""
+def test_troca_de_duas_visitas_fecha_gap_no_caso_pequeno():
+    """A busca local troca duas visitas e alcança o ótimo conhecido para este caso."""
     inst = random_instance(3, n=7, Tmax=110, K=1)
     sol = greedy.solve(inst, PARAMS)
-    assert sol.route == [0, 4, 3, 7, 2, 0]
-    assert sol.objective == pytest.approx(448.3850166069879)
+    optimum = milp.solve(inst, PARAMS, time_limit_s=30)
+    assert sol.route == [0, 4, 3, 6, 5, 0]
+    assert sol.objective == pytest.approx(442.6991939346952)
+    assert optimum.gap == pytest.approx(0, abs=1e-6)
+    assert sol.objective == pytest.approx(optimum.objective, abs=1e-6)
+    assert sol.feasible
 
 
 def test_timing_bate_com_evaluate():
